@@ -110,9 +110,13 @@
 
 
     let loadAccounts () =
-        let storeJson = File.ReadAllText(filename)
-        let store = JsonConvert.DeserializeObject<AccountStore>(storeJson,serializationOption)
-        store.Accounts
+        if File.Exists(filename) then
+            let storeJson = File.ReadAllText(filename)
+            let store = JsonConvert.DeserializeObject<AccountStore>(storeJson,serializationOption)
+            store.Accounts
+        else
+            []
+        
 
     let getAccount accountId =
         let accounts = loadAccounts ()

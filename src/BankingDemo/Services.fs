@@ -18,6 +18,7 @@
         // load account or create an empty one
         let currentAccount =
             getAccount accountId
+            |> Option.map (DataAccess.Dto.bankAccountFromDto)
             |> Option.defaultValue {
                 AccountId = accountId
                 Amount = Money.create 0.0m
@@ -44,6 +45,7 @@
 
         let currentAccount =
             getAccount accountId
+            |> Option.map (DataAccess.Dto.bankAccountFromDto)
 
         match currentAccount with
         | Some account ->
@@ -71,10 +73,12 @@
 
         let sourceAccount =
             getAccount sourceAccount
+            |> Option.map (DataAccess.Dto.bankAccountFromDto)
 
         // load target account or create empty, because an empty can get funds
         let targetAccount =
             getAccount targetAccount
+            |> Option.map (DataAccess.Dto.bankAccountFromDto)
             |> Option.defaultValue (
                 {
                     AccountId = targetAccount
@@ -112,6 +116,9 @@
     }
 
     let createBackAccountService getAccount storeAccount =
+        
+        let getAccount =
+            (fun id -> AccountId.value id |> getAccount)
         {
             DepositCash = depositCash getAccount storeAccount
             WithdrawCash = withdrawCash getAccount storeAccount
