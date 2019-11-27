@@ -101,7 +101,7 @@
 
 
 
-    let private filename = "banaccounts.json"
+    let private filename = "bankaccounts.json"
     let private serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All)
 
 
@@ -112,7 +112,7 @@
     let loadAccounts () =
         let storeJson = File.ReadAllText(filename)
         let store = JsonConvert.DeserializeObject<AccountStore>(storeJson,serializationOption)
-        store.Accounts |> List.map (bankAccountFromDto)
+        store.Accounts
 
     let getAccount accountId =
         let accounts = loadAccounts ()
@@ -122,6 +122,7 @@
     let storeAccount (account:Domain.BankAccount) =
         let domainAccounts =
             loadAccounts ()
+            |> List.map (bankAccountFromDto)
 
         let newAccountsList =
             if domainAccounts |> List.exists (fun i -> i.AccountId = account.AccountId) then
