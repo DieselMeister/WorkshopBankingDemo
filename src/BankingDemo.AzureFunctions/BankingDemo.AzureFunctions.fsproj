@@ -4,8 +4,9 @@
     <AzureFunctionsVersion>v2</AzureFunctionsVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="SignalRStuff.fs" />
     <Compile Include="SignalrFunctions.fs" />
-    <Compile Include="Function1.fs" />
+    <Compile Include="BankingFunctions.fs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="host.json" />

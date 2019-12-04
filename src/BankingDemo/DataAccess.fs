@@ -45,6 +45,13 @@
             Amount:decimal
             Transactions: ITransaction list
         }
+                with 
+                    static member Empty accountId = {
+                            AccountId = accountId
+                            Amount = 0.0m
+                            Transactions = []
+                        }
+                    
 
         open Domain.DataTypes
         open Domain.TransactionArgs

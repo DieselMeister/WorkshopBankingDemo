@@ -12,6 +12,20 @@ type Form =
     | CashWithdrawnForm
 
 
+type CashTransaction = {
+    Amount:string
+}
+        with static member Empty = { Amount = "" }
+
+
+type SepaTransaction = {
+    TargetAccount:string
+    Amount:string
+}
+        with static member Empty = { Amount = ""; TargetAccount="" }
+
+
+
 type Model = {
     AccountId:string
     AllAccountIds:string list
@@ -19,10 +33,11 @@ type Model = {
 
     CurrentForm: Form
 
-    SepaTransactionForm:SepaTransaction option
-    CashDepositForm:CashDeposit option
-    CashWithdrawnFrom:CashWithdrawn option
+    SepaTransactionForm:SepaTransaction
+    CashDepositForm:CashTransaction
+    CashWithdrawnFrom:CashTransaction
 }
+
 
 type Msg =
     | LogIn
@@ -35,7 +50,26 @@ type Msg =
     | GotoSepaTransactionForm
 
     | AllAccountsUpdates of accountIds:string list
-    | AccountDataUpdated of accountData:BankAccount option
+    | AccountDataUpdated of accountData:BankAccount
 
     | LoginAccountIdUpdate of accountId:string
+
+    | CashDepositChangeAmount of amount:string
+    | CashWithdrawChangeAmount of amount:string
+    | SepaTransferChangeAmount of amount:string
+    | SepaTransferChangeTargetAccount of accountId:string
+
+    | SendCashDeposit
+    | SendCashWithdraw
+    | SendSepaTransfer
+
+    | CashDepositSend
+    | CashWithdrawSend
+    | SepaTransferSend
+
+    | OnError of string 
+
+
+
+
 

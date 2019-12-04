@@ -1,4 +1,4 @@
-module AzureFunctions
+module BankingFunctions
 
 open System
 open System.IO
@@ -9,36 +9,9 @@ open Microsoft.Azure.WebJobs.Extensions.Http
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Logging
 open Newtonsoft.Json
-open Microsoft.Azure.SignalR.Management
-open Microsoft.Azure.WebJobs.Extensions.SignalRService
+open SignalRStuff
 
 
-let hubName = "banking"
-
-let private serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All)
-
-let getSignalRBankingHub () =
-    async {
-        return! 
-            StaticServiceHubContextStore.Get().GetAsync(hubName).AsTask() |> Async.AwaitTask
-    }
-
-
-let sendAccountIds () =
-    async {
-        let accountIds = DataAccess.getAccountIds ()
-        let! hub = getSignalRBankingHub ()
-        do! hub.Clients.All.SendCoreAsync("accounts",[| accountIds |]) |> Async.AwaitTask
-    }
-
-
-let sendAccountDataToClient accountId =
-    async {
-        let accountData = DataAccess.getAccount accountId
-        let! hub = getSignalRBankingHub ()
-        let accountDataJson = JsonConvert.SerializeObject(accountData,serializationOption);
-        do! hub.Clients.User(accountId).SendCoreAsync("account", [| accountDataJson |]) |> Async.AwaitTask
-    }
 
 
 [<FunctionName("GetAccount")>]
@@ -50,8 +23,12 @@ let getAccount ([<HttpTrigger(AuthorizationLevel.Function, "get",Route = "getacc
         | None ->
             return NotFoundResult() :> IActionResult
         | Some account ->
-            return (OkObjectResult(account) :> IActionResult)
+            // for the sake of an easy example, I added the type information in the json
+            let result = JsonResult(account,SignalRStuff.serializationOption) 
+            result.StatusCode <- (StatusCodes.Status200OK |> Nullable)
+            return result :> IActionResult
     } |> Async.StartAsTask
+
 
 
 [<FunctionName("DepositCash")>]

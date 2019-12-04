@@ -14,14 +14,5 @@ let getSignalRInfo ([<HttpTrigger(AuthorizationLevel.Anonymous)>] req: HttpReque
         connectionInfo
 
 
-[<FunctionName("blabla")>]
-let timeTriggeredMessage ([<TimerTrigger("*/15 * * * * *")>] timerInfo:TimerInfo) =
-    async {
-        let! (serviceHubContext:IServiceHubContext) = 
-            StaticServiceHubContextStore.Get().GetAsync("banking").AsTask() |> Async.AwaitTask
-
-        do! serviceHubContext.Clients.All.SendCoreAsync("newMessage", [| "time jetriggert!" |> unbox |] ) |> Async.AwaitTask
-    
-    } |> Async.StartAsTask
 
 
