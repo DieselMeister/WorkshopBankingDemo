@@ -4,16 +4,17 @@
 
     open Domain
     open Domain.DataTypes
+    open Domain.TransactionArgs
     
 
     let depositCash getAccount storeAccount accountId amount =
         let accountId = AccountId.create accountId
         
         let cashDeposit =
-            {| 
+            { 
                 AccountId = accountId
                 Amount = Money.create amount
-            |} |> CashDeposit
+            } |> CashDeposit
 
         // load account or create an empty one
         let currentAccount =
@@ -38,10 +39,10 @@
         let accountId = AccountId.create accountId
         
         let cashWithdraw =
-            {| 
+            { 
                 AccountId = accountId
                 Amount = Money.create amount
-            |} |> CashWithdrawn
+            } |> CashWithdrawn
 
         let currentAccount =
             getAccount accountId

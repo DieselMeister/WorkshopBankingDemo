@@ -35,12 +35,17 @@
             Amount:Money
         }
 
+        type CashArg = {
+            AccountId:AccountId
+            Amount:Money
+        }
+
     open DataTypes
     
     type Transaction =
-        | CashDeposit of {| AccountId:AccountId; Amount:Money |}
+        | CashDeposit of TransactionArgs.CashArg
         | SepaTransaction of TransactionArgs.SepaTransactionArg
-        | CashWithdrawn of {| AccountId:AccountId; Amount:Money |}
+        | CashWithdrawn of TransactionArgs.CashArg
 
 
     // State

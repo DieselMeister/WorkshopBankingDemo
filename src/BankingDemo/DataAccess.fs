@@ -4,28 +4,39 @@
 
     module Dto =
         
-        type ITransaction = interface end
+        type ITransaction = 
+            abstract EventName:string
 
         type CashDeposit = {
                 AccountId:string
                 Amount:decimal
+                EventName:string
             }
-            with interface ITransaction
+            with 
+                interface ITransaction with
+                    member this.EventName = this.EventName
+                
 
 
         type CashWithdrawn = {
             AccountId:string
             Amount:decimal
+            EventName:string
             }
-            with interface ITransaction
+            with 
+                interface ITransaction with
+                    member this.EventName = this.EventName
 
 
         type SepaTransaction = {
             SourceAccount:string            
             TargetAccount:string
             Amount:decimal
+            EventName:string
             }
-            with interface ITransaction
+            with 
+                interface ITransaction with
+                    member this.EventName = this.EventName
 
         
 
@@ -36,19 +47,21 @@
         }
 
         open Domain.DataTypes
+        open Domain.TransactionArgs
+
 
         let private transactionFromDto (dto:ITransaction) =
             match dto with
             | :? CashDeposit as d -> 
-                {|
+                {
                     AccountId = AccountId.create d.AccountId
                     Amount = Money.create d.Amount
-                |} |> Domain.CashDeposit
+                } |> Domain.CashDeposit
             | :? CashWithdrawn as w ->
-                {|
+                {
                     AccountId = AccountId.create w.AccountId
                     Amount = Money.create w.Amount
-                |} |> Domain.CashWithdrawn
+                } |> Domain.CashWithdrawn
             | :? SepaTransaction as s ->
                 Domain.SepaTransaction {
                     SourceAccount = AccountId.create s.SourceAccount
@@ -63,17 +76,22 @@
                 {
                     CashDeposit.AccountId = AccountId.value d.AccountId
                     Amount = Money.value d.Amount
+                    EventName="CashDeposit"
                 } :> ITransaction
+
             | Domain.CashWithdrawn w ->
                 {
                     CashWithdrawn.AccountId = AccountId.value w.AccountId
                     Amount = Money.value w.Amount
+                    EventName="CashWithdrawn"
                 } :> ITransaction
+
             | Domain.SepaTransaction s ->
                 {
                     SourceAccount = AccountId.value s.SourceAccount
                     TargetAccount = AccountId.value s.TargetAccount
                     Amount =Money.value s.Amount
+                    EventName="SepaTransaction"
                 } :> ITransaction
 
 
@@ -121,6 +139,14 @@
     let getAccount accountId =
         let accounts = loadAccounts ()
         accounts |> List.tryFind (fun i -> i.AccountId = accountId)
+
+
+
+    let getAccountIds () =
+        let accounts = loadAccounts ()
+        accounts 
+        |> List.map (fun i -> i.AccountId) 
+        |> List.distinct
 
 
     let storeAccount (account:Domain.BankAccount) =

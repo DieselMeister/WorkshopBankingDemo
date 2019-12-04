@@ -9,6 +9,36 @@ open Microsoft.Azure.WebJobs.Extensions.Http
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Logging
 open Newtonsoft.Json
+open Microsoft.Azure.SignalR.Management
+open Microsoft.Azure.WebJobs.Extensions.SignalRService
+
+
+let hubName = "banking"
+
+let private serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All)
+
+let getSignalRBankingHub () =
+    async {
+        return! 
+            StaticServiceHubContextStore.Get().GetAsync(hubName).AsTask() |> Async.AwaitTask
+    }
+
+
+let sendAccountIds () =
+    async {
+        let accountIds = DataAccess.getAccountIds ()
+        let! hub = getSignalRBankingHub ()
+        do! hub.Clients.All.SendCoreAsync("accounts",[| accountIds |]) |> Async.AwaitTask
+    }
+
+
+let sendAccountDataToClient accountId =
+    async {
+        let accountData = DataAccess.getAccount accountId
+        let! hub = getSignalRBankingHub ()
+        let accountDataJson = JsonConvert.SerializeObject(accountData,serializationOption);
+        do! hub.Clients.User(accountId).SendCoreAsync("account", [| accountDataJson |]) |> Async.AwaitTask
+    }
 
 
 [<FunctionName("GetAccount")>]
@@ -35,6 +65,12 @@ let depositCash ([<HttpTrigger(AuthorizationLevel.Function, "post",Route = "depo
 
 
         let account = bankService.DepositCash cashDepositData.AccountId cashDepositData.Amount
+
+        do! sendAccountIds ()
+        do! sendAccountDataToClient cashDepositData.AccountId
+
+
+
         match account with
         | Error e ->
             return BadRequestObjectResult(e) :> IActionResult
@@ -54,6 +90,10 @@ let withdrawCash ([<HttpTrigger(AuthorizationLevel.Function, "post",Route = "wit
 
 
         let account = bankService.WithdrawCash cashWithdrawData.AccountId cashWithdrawData.Amount
+
+        do! sendAccountIds ()
+        do! sendAccountDataToClient cashWithdrawData.AccountId
+
         match account with
         | Error e ->
             return BadRequestObjectResult(e) :> IActionResult
@@ -73,11 +113,20 @@ let sepaTransfer ([<HttpTrigger(AuthorizationLevel.Function, "post",Route = "sep
 
 
         let account = bankService.SepaTransfer sepaData.SourceAccount sepaData.TargetAccount sepaData.Amount
+
+        do! sendAccountIds ()
+        do! sendAccountDataToClient sepaData.SourceAccount
+        do! sendAccountDataToClient sepaData.TargetAccount
+
         match account with
         | Error e ->
             return BadRequestObjectResult(e) :> IActionResult
         | Ok () ->
             return (OkResult() :> IActionResult)
     } |> Async.StartAsTask
+    
+
+
+
     
 
