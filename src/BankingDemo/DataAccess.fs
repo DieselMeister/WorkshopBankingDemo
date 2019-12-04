@@ -125,62 +125,189 @@
     }
 
 
-
-    let private filename = "bankaccounts.json"
+       
     let private serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All)
 
 
-    open System
-    open System.IO
+    
+       
+    module private FileStorage =
 
+        open System
+        open System.IO
 
-    let loadAccounts () =
-        if File.Exists(filename) then
-            let storeJson = File.ReadAllText(filename)
-            let store = JsonConvert.DeserializeObject<AccountStore>(storeJson,serializationOption)
-            store.Accounts
-        else
-            []
+        let loadAccounts filename =
+            if File.Exists(filename) then
+                let storeJson = File.ReadAllText(filename)
+                let store = JsonConvert.DeserializeObject<AccountStore>(storeJson,serializationOption)
+                store.Accounts
+            else
+                []
         
 
-    let getAccount accountId =
-        let accounts = loadAccounts ()
-        accounts |> List.tryFind (fun i -> i.AccountId = accountId)
+        let getAccount filename accountId =
+            let accounts = loadAccounts filename
+            accounts |> List.tryFind (fun i -> i.AccountId = accountId)
 
 
 
-    let getAccountIds () =
-        let accounts = loadAccounts ()
-        accounts 
-        |> List.map (fun i -> i.AccountId) 
-        |> List.distinct
+        let getAccountIds filename =
+            let accounts = loadAccounts filename
+            accounts 
+            |> List.map (fun i -> i.AccountId) 
+            |> List.distinct
 
 
-    let storeAccount (account:Domain.BankAccount) =
-        let domainAccounts =
-            loadAccounts ()
-            |> List.map (bankAccountFromDto)
+        let storeAccount filename (account:Domain.BankAccount) =
+            let domainAccounts =
+                loadAccounts filename
+                |> List.map (bankAccountFromDto)
 
-        let newAccountsList =
-            if domainAccounts |> List.exists (fun i -> i.AccountId = account.AccountId) then
-                // update accounts
-                domainAccounts
-                |> List.map (fun i -> 
-                    if (i.AccountId = account.AccountId) then
-                        account
-                    else
-                        i
-                )
+            let newAccountsList =
+                if domainAccounts |> List.exists (fun i -> i.AccountId = account.AccountId) then
+                    // update accounts
+                    domainAccounts
+                    |> List.map (fun i -> 
+                        if (i.AccountId = account.AccountId) then
+                            account
+                        else
+                            i
+                    )
+                else
+                    account :: domainAccounts
+
+            let newStore =
+                {
+                    Accounts = newAccountsList |> List.map (bankAccountFromDomain)
+                }
+
+            let newStoreJson = JsonConvert.SerializeObject(newStore, serializationOption)
+            File.WriteAllText(filename,newStoreJson)
+
+
+
+    module private AzureBlobStorage =
+
+        open Microsoft.WindowsAzure.Storage
+        open Microsoft.WindowsAzure.Storage.Blob
+
+        let createStorageAccount connectionString =
+            let (isValid,storageAccount) = CloudStorageAccount.TryParse(connectionString)
+            if not isValid then 
+                failwith ("error connection storage account")
             else
-                account :: domainAccounts
+                storageAccount
 
-        let newStore =
-            {
-                Accounts = newAccountsList |> List.map (bankAccountFromDomain)
+
+        let createBlob filename (storageAccount:CloudStorageAccount) =
+            async {
+                let client = storageAccount.CreateCloudBlobClient()
+                let container = client.GetContainerReference("bankingdata")
+                let! _ = container.CreateIfNotExistsAsync() |> Async.AwaitTask
+                let blob = container.GetBlockBlobReference(filename);
+                blob.Properties.ContentType <- "application/json";
+                return blob
             }
+            
 
-        let newStoreJson = JsonConvert.SerializeObject(newStore, serializationOption)
-        File.WriteAllText(filename,newStoreJson)
+
+
+        let loadAccounts (blob:CloudBlockBlob) =
+            async {
+                let! existsBlob = blob.ExistsAsync() |> Async.AwaitTask
+                if existsBlob then
+                    let! storeJson = blob.DownloadTextAsync() |> Async.AwaitTask
+                    let store = JsonConvert.DeserializeObject<AccountStore>(storeJson,serializationOption)
+                    return store.Accounts
+                else
+                    return []
+            }
+            
+        
+
+        let getAccount blob accountId =
+            async {
+                let! accounts = loadAccounts blob
+                return accounts |> List.tryFind (fun i -> i.AccountId = accountId)
+            }
+            
+
+
+
+        let getAccountIds blob =
+            async {
+                let! accounts = loadAccounts blob
+                return
+                    accounts 
+                    |> List.map (fun i -> i.AccountId) 
+                    |> List.distinct
+            }
+            
+
+
+        let storeAccount blob (account:Domain.BankAccount) =
+            async {
+                let! domainAccounts =
+                    loadAccounts blob
+                    
+                let domainAccounts =
+                    domainAccounts
+                    |> List.map (bankAccountFromDto)
+
+                let newAccountsList =
+                    if domainAccounts |> List.exists (fun i -> i.AccountId = account.AccountId) then
+                        // update accounts
+                        domainAccounts
+                        |> List.map (fun i -> 
+                            if (i.AccountId = account.AccountId) then
+                                account
+                            else
+                                i
+                        )
+                    else
+                        account :: domainAccounts
+
+                let newStore = {
+                    Accounts = newAccountsList |> List.map (bankAccountFromDomain)
+                }
+
+                let newStoreJson = JsonConvert.SerializeObject(newStore, serializationOption)
+                do! blob.UploadTextAsync(newStoreJson) |> Async.AwaitTask
+                
+            }
+            
+        
+
+
+    type DataRepository = {
+        LoadAccounts: unit -> Async<BankAccount list>
+        GetAccount: string -> Async<BankAccount option>
+        GetAccountIds: unit -> Async<string list>
+        StoreAccount: Domain.BankAccount -> Async<unit>
+    }
+
+
+    let createFileStorageRepository filename = {
+        LoadAccounts = fun () -> FileStorage.loadAccounts filename |> async.Return
+        GetAccount = fun id -> FileStorage.getAccount filename id |> async.Return
+        GetAccountIds = fun () -> FileStorage.getAccountIds filename |> async.Return
+        StoreAccount = fun id -> FileStorage.storeAccount filename id |> async.Return
+    }
+
+
+    let createAzureBlobStorageRepository connectionString filename = 
+        async {
+            let storageAccount = AzureBlobStorage.createStorageAccount connectionString
+            let! blob = AzureBlobStorage.createBlob filename storageAccount
+
+            return {
+                LoadAccounts = fun () -> AzureBlobStorage.loadAccounts blob
+                GetAccount = AzureBlobStorage.getAccount blob
+                GetAccountIds = fun () -> AzureBlobStorage.getAccountIds blob
+                StoreAccount = AzureBlobStorage.storeAccount blob
+            }
+        }
+    
 
 
         

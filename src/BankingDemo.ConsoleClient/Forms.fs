@@ -37,6 +37,20 @@ let errorMessage dispatch okMessage text =
     ]
 
 
+let isLoading () =
+    formWindow "Loading..." [
+        label [ 
+            Text "Wait until action is finished ..."
+            Styles [
+                Pos (AbsPos 2,AbsPos 2)
+                Colors (Terminal.Gui.Color.Red,Terminal.Gui.Color.BrightYellow)
+            ]
+        ]
+
+        
+    ]
+
+
 let loginForm (model:Model.Model) dispatch =
     formWindow "Login" [
         label [ 
@@ -75,9 +89,16 @@ let mainSite model dispatch =
         | Some accountData ->
             label [
                 Styles [
+                    Pos(AbsPos 2,AbsPos 1)
+                ]
+                Text (sprintf "Account ID: %s" accountData.AccountId)
+            ]
+
+            label [
+                Styles [
                     Pos(AbsPos 2,AbsPos 2)
                 ]
-                Text (sprintf "Amount: %A" accountData.Amount)
+                Text (sprintf "Amount: %M" accountData.Amount)
             ]
 
             button [
@@ -109,24 +130,24 @@ let mainSite model dispatch =
                 match item with
                 | :? CashDeposit as cd ->
                     "Cash: Deposit",
-                    sprintf "  % 7M" cd.Amount,
+                    sprintf "  % 7.2M" cd.Amount,
                     Terminal.Gui.Color.BrightGreen
 
                 | :? CashWithdrawn as cw ->
                     "Cash: Withdraw",
-                    sprintf "- % 7M" cw.Amount,
+                    sprintf "- % 7.2M" cw.Amount,
                     Terminal.Gui.Color.BrightRed
                     
                 | :? SepaTransaction as st ->
                     
                     if (st.SourceAccount = accountData.AccountId) then
                         sprintf "Sepa Outgoing: to %s" st.TargetAccount,
-                        sprintf "  % 7M" st.Amount,
-                        Terminal.Gui.Color.BrightGreen
+                        sprintf "- % 7.2M" st.Amount,
+                        Terminal.Gui.Color.BrightRed
                     else
                         sprintf "Sepa Incomming: from %s" st.SourceAccount,
-                        sprintf "- % 7M" st.Amount,
-                        Terminal.Gui.Color.BrightRed
+                        sprintf "  % 7.2M" st.Amount,
+                        Terminal.Gui.Color.BrightGreen
                 | _ ->
                     "invalid Transaction!",
                     "",

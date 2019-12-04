@@ -5,6 +5,7 @@
     open Domain
     open Domain.DataTypes
     open Domain.TransactionArgs
+    open DataAccess
     
 
     let depositCash getAccount storeAccount accountId amount =
@@ -116,15 +117,20 @@
         SepaTransfer: string -> string -> decimal -> Result<unit,string>
     }
 
-    let createBackAccountService getAccount storeAccount =
-        
+    let createBackAccountService (dataRepository:DataRepository) =
         let getAccount =
-            (fun id -> AccountId.value id |> getAccount)
+            (fun id -> AccountId.value id |> dataRepository.GetAccount |> Async.RunSynchronously)
+
+        let storeAccount =
+            (fun bankaccount -> dataRepository.StoreAccount bankaccount |> Async.RunSynchronously)
+
         {
             DepositCash = depositCash getAccount storeAccount
             WithdrawCash = withdrawCash getAccount storeAccount
             SepaTransfer = sepaTransfer getAccount storeAccount
         }
+        
+        
 
 
 

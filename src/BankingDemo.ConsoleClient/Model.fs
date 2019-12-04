@@ -12,6 +12,7 @@ type Form =
     | CashWithdrawnForm
 
 
+
 type CashTransaction = {
     Amount:string
 }
@@ -36,6 +37,8 @@ type Model = {
     SepaTransactionForm:SepaTransaction
     CashDepositForm:CashTransaction
     CashWithdrawnFrom:CashTransaction
+
+    IsLoading:bool
 }
 
 

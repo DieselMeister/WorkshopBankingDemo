@@ -9,6 +9,9 @@
     <Compile Include="BankingFunctions.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="banking.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="host.json" />
     <None Include="local.settings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

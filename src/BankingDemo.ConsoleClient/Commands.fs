@@ -14,6 +14,7 @@ open System.Text
 
 
 let baseUrl = "http://localhost:7071"
+
 let private serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All)
 
 
@@ -44,23 +45,33 @@ let openSignalRConnectionCmd accountId =
             dispatch (AccountDataUpdated accountData)
         
         async {
-            dispatch GotoConnectionForm
-            let! info = getConnectionInfo accountId
+            try
+                dispatch GotoConnectionForm
+                let! info = getConnectionInfo accountId
 
-            let connection = HubConnectionBuilder()
-                                .WithUrl(Uri(info.Url),
-                                    fun (options) ->
-                                        options.AccessTokenProvider <- (fun () -> Task.FromResult(info.AccessToken))
-                                )
-                                .Build()
+                let connection = HubConnectionBuilder()
+                                    .WithUrl(Uri(info.Url),
+                                        fun (options) ->
+                                            options.AccessTokenProvider <- (fun () -> Task.FromResult(info.AccessToken))
+                                    )
+                                    .WithAutomaticReconnect([| TimeSpan.Zero; TimeSpan.Zero; TimeSpan.FromSeconds(10.0) |])
+                                    .Build()
             
-            connection.On("accounts", fun (data:string[]) -> onGetAllAccountIds data) |> ignore
-            connection.On("account", fun (data:string) -> onGetAccountData data) |> ignore
-            
-            do! connection.StartAsync() |> Async.AwaitTask
+                connection.On("accounts", fun (data:string[]) -> onGetAllAccountIds data) |> ignore
+                connection.On("account", fun (data:string) -> onGetAccountData data) |> ignore
 
-            dispatch Connected
-        } |> Async.StartImmediate
+                connection.add_Closed(fun ex -> dispatch (OnError ex.Message); Task.CompletedTask)
+                connection.add_Reconnected(fun msg -> dispatch (OnError msg); Task.CompletedTask)
+                connection.add_Reconnecting(fun ex -> dispatch (OnError ex.Message); Task.CompletedTask )
+            
+                do! connection.StartAsync() |> Async.AwaitTask
+                
+                dispatch Connected
+            with
+            | _ as ex ->
+                dispatch (OnError ex.Message)
+
+        } |> Async.Start
     |> Cmd.ofSub
 
 

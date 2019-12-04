@@ -13,7 +13,8 @@ let init () =
         CurrentForm= LoginForm
         SepaTransactionForm = SepaTransaction.Empty
         CashDepositForm = CashTransaction.Empty
-        CashWithdrawnFrom = CashTransaction.Empty        
+        CashWithdrawnFrom = CashTransaction.Empty
+        IsLoading = false
     }
     model, Cmd.none
 
@@ -26,11 +27,12 @@ let update msg (model:Model) =
     | LogIn  ->
         // open SignalR connection
         let cmdOpenSignalR = Commands.openSignalRConnectionCmd model.AccountId
-        let cmdLoadAccountData = Commands.getAccountCmd model.AccountId
-        model, Cmd.batch [ cmdOpenSignalR; cmdLoadAccountData ]
+        
+        model, Cmd.batch [ Cmd.ofMsg GotoConnectionForm; cmdOpenSignalR ]
 
     | Connected ->
-        model, Cmd.ofMsg GotoMainForm
+        let cmdLoadAccountData = Commands.getAccountCmd model.AccountId
+        { model with IsLoading = true }, Cmd.batch [ cmdLoadAccountData; Cmd.ofMsg GotoMainForm ]
 
     // Goto's
 
@@ -57,7 +59,7 @@ let update msg (model:Model) =
         { model with AllAccountIds = accountIds }, Cmd.none
 
     | AccountDataUpdated accountData ->
-        { model with AccountData = Some accountData }, Cmd.none
+        { model with AccountData = Some accountData; IsLoading = false }, Cmd.none
 
     | LoginAccountIdUpdate accountId ->
         { model with AccountId = accountId }, Cmd.none
@@ -85,7 +87,7 @@ let update msg (model:Model) =
                 EventName = "CashDeposit"
             }
 
-            model, Commands.depositCashCmd data
+            { model with IsLoading = true}, Commands.depositCashCmd data
     | SendCashWithdraw ->
         let (isValid,amount) = System.Decimal.TryParse(model.CashWithdrawnFrom.Amount)
         if not isValid then
@@ -97,7 +99,7 @@ let update msg (model:Model) =
                 EventName = "CashWithdrawn"
             }
 
-            model, Commands.withdrawCashCmd data
+            { model with IsLoading = true}, Commands.withdrawCashCmd data
     | SendSepaTransfer ->
         let (isValid,amount) = System.Decimal.TryParse(model.SepaTransactionForm.Amount)
         if not isValid then
@@ -109,7 +111,7 @@ let update msg (model:Model) =
                 Amount = amount
                 EventName = "SepaTransaction"
             }
-            model, Commands.sepaTransferCmd data
+            { model with IsLoading = true}, Commands.sepaTransferCmd data
 
     | CashDepositSend ->
         { model with CashDepositForm = CashTransaction.Empty }, Cmd.ofMsg GotoMainForm
@@ -120,7 +122,7 @@ let update msg (model:Model) =
 
     | OnError msg ->
         messageBox 60 10 "Error" msg [ "OK" ] |> ignore
-        model,Cmd.none
+        { model with IsLoading = false} ,Cmd.none
 
 
 
@@ -136,20 +138,22 @@ let view model dispatch =
             ]
             
         ] [
-            
-            match model.CurrentForm with
-            | LoginForm ->
-                Forms.loginForm model dispatch
-            | ConnectionForm ->
-                Forms.connecting model dispatch
-            | MainForm ->
-                Forms.mainSite model dispatch
-            | SepaTransactionForm ->
-                Forms.sepaTransfer model dispatch
-            | CashDepositForm ->
-                Forms.depositCash model dispatch
-            | CashWithdrawnForm ->
-                Forms.withdrawCash model dispatch
+            if model.IsLoading then
+                Forms.isLoading ()
+            else
+                match model.CurrentForm with
+                | LoginForm ->
+                    Forms.loginForm model dispatch
+                | ConnectionForm ->
+                    Forms.connecting model dispatch
+                | MainForm ->
+                    Forms.mainSite model dispatch
+                | SepaTransactionForm ->
+                    Forms.sepaTransfer model dispatch
+                | CashDepositForm ->
+                    Forms.depositCash model dispatch
+                | CashWithdrawnForm ->
+                    Forms.withdrawCash model dispatch
             
 
         ]
