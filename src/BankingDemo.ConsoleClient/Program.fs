@@ -81,10 +81,9 @@ let update msg (model:Model) =
         if not isValid then
             model, Cmd.ofMsg (OnError "invalid amount - not a number!")
         else
-            let data:DataAccess.Dto.CashDeposit = {
+            let data:Dtos.CashDeposit = {
                 AccountId = model.AccountId
                 Amount = amount
-                EventName = "CashDeposit"
             }
 
             { model with IsLoading = true}, Commands.depositCashCmd data
@@ -93,10 +92,9 @@ let update msg (model:Model) =
         if not isValid then
             model, Cmd.ofMsg (OnError "invalid amount - not a number!")
         else
-            let data:DataAccess.Dto.CashWithdrawn = {
+            let data:Dtos.CashWithdrawn = {
                 AccountId = model.AccountId
                 Amount = amount
-                EventName = "CashWithdrawn"
             }
 
             { model with IsLoading = true}, Commands.withdrawCashCmd data
@@ -105,11 +103,10 @@ let update msg (model:Model) =
         if not isValid then
             model, Cmd.ofMsg (OnError "sepa: invalid amount - not a number!")
         else
-            let data:DataAccess.Dto.SepaTransaction = {
+            let data:Dtos.SepaTransaction = {
                 SourceAccount = model.AccountId
                 TargetAccount = model.SepaTransactionForm.TargetAccount
                 Amount = amount
-                EventName = "SepaTransaction"
             }
             { model with IsLoading = true}, Commands.sepaTransferCmd data
 

@@ -10,6 +10,7 @@ open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Logging
 open Newtonsoft.Json
 open SignalRStuff
+open FSharp.Control.Tasks.V2
 
 
 
@@ -20,7 +21,7 @@ let dataRepo = lazy(
 )
 
 let bankService = lazy (
-    async {
+    task {
         let! dataRepo = dataRepo.Force()
         return Services.createBackAccountService dataRepo
     }
@@ -29,7 +30,7 @@ let bankService = lazy (
 
 [<FunctionName("GetAccount")>]
 let getAccount ([<HttpTrigger(AuthorizationLevel.Anonymous, "get",Route = "getaccount/{id}")>] req:HttpRequest, id:string, log:ILogger) =
-    async {
+    task {
         log.LogInformation("C# HTTP trigger function processed a request.")
 
         let! dataRepo = dataRepo.Force()
@@ -44,51 +45,49 @@ let getAccount ([<HttpTrigger(AuthorizationLevel.Anonymous, "get",Route = "getac
             let result = JsonResult(account,SignalRStuff.serializationOption) 
             result.StatusCode <- (StatusCodes.Status200OK |> Nullable)
             return result :> IActionResult
-    } |> Async.StartAsTask
+    } 
 
 
 
 [<FunctionName("DepositCash")>]
 let depositCash ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "depositcash")>] req:HttpRequest, log:ILogger) =
-    async {
+    task {
         log.LogInformation("C# HTTP trigger function processed a request.")
 
-        let! requestBody = (new StreamReader(req.Body)).ReadToEndAsync() |> Async.AwaitTask
-        let cashDepositData = JsonConvert.DeserializeObject<DataAccess.Dto.CashDeposit>(requestBody);
+        let! requestBody = (new StreamReader(req.Body)).ReadToEndAsync()
+        let cashDepositData = JsonConvert.DeserializeObject<Dtos.CashDeposit>(requestBody);
 
         let! dataRepo = dataRepo.Force()
         let! bankService = bankService.Force()
         
 
 
-        let account = bankService.DepositCash cashDepositData.AccountId cashDepositData.Amount
+        let! account = bankService.DepositCash cashDepositData.AccountId cashDepositData.Amount
 
         do! sendAccountIds dataRepo
         do! sendAccountDataToClient dataRepo cashDepositData.AccountId
-
-
 
         match account with
         | Error e ->
             return BadRequestObjectResult(e) :> IActionResult
         | Ok () ->
             return (OkResult() :> IActionResult)
-    } |> Async.StartAsTask
+    } 
 
 
 [<FunctionName("WithdrawCash")>]
 let withdrawCash ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "withdrawCash")>] req:HttpRequest, log:ILogger) =
-    async {
+    task {
         log.LogInformation("C# HTTP trigger function processed a request.")
 
-        let! requestBody = (new StreamReader(req.Body)).ReadToEndAsync() |> Async.AwaitTask
-        let cashWithdrawData = JsonConvert.DeserializeObject<DataAccess.Dto.CashWithdrawn>(requestBody);
+        let! requestBody = (new StreamReader(req.Body)).ReadToEndAsync()
+        let cashWithdrawData = JsonConvert.DeserializeObject<Dtos.CashWithdrawn>(requestBody);
 
         let! dataRepo = dataRepo.Force()
         let! bankService = bankService.Force()
 
 
-        let account = bankService.WithdrawCash cashWithdrawData.AccountId cashWithdrawData.Amount
+        let! account = bankService.WithdrawCash cashWithdrawData.AccountId cashWithdrawData.Amount
 
         do! sendAccountIds dataRepo
         do! sendAccountDataToClient dataRepo cashWithdrawData.AccountId
@@ -98,22 +97,22 @@ let withdrawCash ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "wi
             return BadRequestObjectResult(e) :> IActionResult
         | Ok () ->
             return (OkResult() :> IActionResult)
-    } |> Async.StartAsTask
+    } 
 
 
 [<FunctionName("SepaTransfer")>]
 let sepaTransfer ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "sepaTransfer")>] req:HttpRequest, log:ILogger) =
-    async {
+    task {
         log.LogInformation("C# HTTP trigger function processed a request.")
 
-        let! requestBody = (new StreamReader(req.Body)).ReadToEndAsync() |> Async.AwaitTask
-        let sepaData = JsonConvert.DeserializeObject<DataAccess.Dto.SepaTransaction>(requestBody);
+        let! requestBody = (new StreamReader(req.Body)).ReadToEndAsync()
+        let sepaData = JsonConvert.DeserializeObject<Dtos.SepaTransaction>(requestBody);
 
         let! dataRepo = dataRepo.Force()
         let! bankService = bankService.Force()
 
 
-        let account = bankService.SepaTransfer sepaData.SourceAccount sepaData.TargetAccount sepaData.Amount
+        let! account = bankService.SepaTransfer sepaData.SourceAccount sepaData.TargetAccount sepaData.Amount
 
         do! sendAccountIds dataRepo
         do! sendAccountDataToClient dataRepo sepaData.SourceAccount
@@ -124,7 +123,7 @@ let sepaTransfer ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "se
             return BadRequestObjectResult(e) :> IActionResult
         | Ok () ->
             return (OkResult() :> IActionResult)
-    } |> Async.StartAsTask
+    } 
     
 
 

@@ -83,6 +83,7 @@
                             Amount = newAmount
                             Transactions = transaction :: bankaccount.Transactions
                     } |> Ok
+
         | SepaTransaction st ->
             match st.SourceAccount, st.TargetAccount with
             | s,t when s = bankaccount.AccountId && t = bankaccount.AccountId ->

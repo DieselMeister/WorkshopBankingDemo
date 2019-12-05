@@ -2,7 +2,7 @@
 
 open Terminal.Gui.Elmish
 open Model
-open DataAccess.Dto
+open Dtos
 
 
 let formWindow title content =

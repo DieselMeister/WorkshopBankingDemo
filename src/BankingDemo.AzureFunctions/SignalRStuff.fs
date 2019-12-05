@@ -2,6 +2,7 @@
 
 open Microsoft.Azure.WebJobs.Extensions.SignalRService
 open Newtonsoft.Json
+open FSharp.Control.Tasks.V2
 
 
 
@@ -11,28 +12,28 @@ let serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandli
 
 
 let getSignalRBankingHub () =
-    async {
+    task {
         return! 
-            StaticServiceHubContextStore.Get().GetAsync(hubName).AsTask() |> Async.AwaitTask
+            StaticServiceHubContextStore.Get().GetAsync(hubName).AsTask()
     }
 
 
 let sendAccountIds (dataRepo:DataAccess.DataRepository) =
-    async {
+    task {
         let accountIds = dataRepo.GetAccountIds ()
         let! hub = getSignalRBankingHub ()
-        do! hub.Clients.All.SendCoreAsync("accounts",[| accountIds |]) |> Async.AwaitTask
+        do! hub.Clients.All.SendCoreAsync("accounts",[| accountIds |])
     }
 
 
 let sendAccountDataToClient (dataRepo:DataAccess.DataRepository) accountId =
-    async {
+    task {
         let! accountData = dataRepo.GetAccount accountId
         match accountData with
         | None -> ()
         | Some accountData ->
             let! hub = getSignalRBankingHub ()
             let accountDataJson = JsonConvert.SerializeObject(accountData,serializationOption);
-            do! hub.Clients.User(accountId).SendCoreAsync("account", [| accountDataJson |]) |> Async.AwaitTask
+            do! hub.Clients.User(accountId).SendCoreAsync("account", [| accountDataJson |])
     }
 

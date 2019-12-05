@@ -7,30 +7,13 @@ open Newtonsoft.Json
 open Microsoft.Azure.WebJobs.Extensions.SignalRService
 open Microsoft.AspNetCore.SignalR.Client
 open System.Threading.Tasks
-open DataAccess.Dto
+open Dtos
 open Terminal.Gui.Elmish
 open System.Net
 open System.Text
-
-
-let baseUrl = "http://localhost:7071"
+open FSharp.Control.Tasks.V2
 
 let private serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All)
-
-
-let getConnectionInfo accountId =
-    async {
-        use client = new HttpClient()
-        let url = sprintf "%s/api/negotiate?username=%s&hubname=banking" baseUrl accountId
-        client.DefaultRequestHeaders.Add("x-ms-signalr-userid", accountId)
-        let! res = client.PostAsync(url,null) |> Async.AwaitTask
-        if not res.IsSuccessStatusCode then
-            return failwith ("error getting signal r service info")
-        else
-            let! content = res.Content.ReadAsStringAsync() |> Async.AwaitTask
-            let info = JsonConvert.DeserializeObject<SignalRConnectionInfo>(content)
-            return info
-    }
 
 
 let openSignalRConnectionCmd accountId =
@@ -38,114 +21,72 @@ let openSignalRConnectionCmd accountId =
 
         let onGetAllAccountIds (accountIds:string []) =
             dispatch (AllAccountsUpdates (accountIds |> Array.toList))
+            
 
 
         let onGetAccountData (data:string) =
             let accountData = JsonConvert.DeserializeObject<BankAccount>(data,serializationOption)
             dispatch (AccountDataUpdated accountData)
         
+        
         async {
             try
                 dispatch GotoConnectionForm
-                let! info = getConnectionInfo accountId
+                let! info = Clients.SignalR.getConnectionInfo accountId |> Async.AwaitTask
 
-                let connection = HubConnectionBuilder()
-                                    .WithUrl(Uri(info.Url),
-                                        fun (options) ->
-                                            options.AccessTokenProvider <- (fun () -> Task.FromResult(info.AccessToken))
-                                    )
-                                    .WithAutomaticReconnect([| TimeSpan.Zero; TimeSpan.Zero; TimeSpan.FromSeconds(10.0) |])
-                                    .Build()
-            
-                connection.On("accounts", fun (data:string[]) -> onGetAllAccountIds data) |> ignore
-                connection.On("account", fun (data:string) -> onGetAccountData data) |> ignore
-
-                connection.add_Closed(fun ex -> dispatch (OnError ex.Message); Task.CompletedTask)
-                connection.add_Reconnected(fun msg -> dispatch (OnError msg); Task.CompletedTask)
-                connection.add_Reconnecting(fun ex -> dispatch (OnError ex.Message); Task.CompletedTask )
-            
-                do! connection.StartAsync() |> Async.AwaitTask
-                
+                do! Clients.SignalR.openSignalRConnection info onGetAllAccountIds onGetAccountData
                 dispatch Connected
             with
             | _ as ex ->
                 dispatch (OnError ex.Message)
 
         } |> Async.Start
+        
     |> Cmd.ofSub
 
 
 let getAccountCmd accountId =
-    async {
-        use client = new HttpClient()
-        let url = sprintf "%s/api/getaccount/%s" baseUrl accountId
-        let! res = client.GetAsync(url) |> Async.AwaitTask
-        if not res.IsSuccessStatusCode then
-            if res.StatusCode = HttpStatusCode.NotFound then
-                return AccountDataUpdated (BankAccount.Empty accountId)
-            else
-                return failwith ("error getting account data")
-        else
-            let! content = res.Content.ReadAsStringAsync() |> Async.AwaitTask
-            let info = JsonConvert.DeserializeObject<BankAccount>(content,serializationOption)
-            return AccountDataUpdated (info)
-    } |> Cmd.OfAsync.result
-
-
-
-let private sendData (url:string) data : Async<Result<unit,string>> =
-    async {
-        use client = new HttpClient()
-        let dataJson = JsonConvert.SerializeObject(data)
-        let content = new StringContent(dataJson,Encoding.UTF8,"application/json")
-        let! res = client.PostAsync(url,content) |> Async.AwaitTask
-        if not res.IsSuccessStatusCode then
-            let! content = res.Content.ReadAsStringAsync() |> Async.AwaitTask
-            let content =
-                if content = "" then 
-                    sprintf "StatusCode: %A" res.StatusCode
-                else
-                    content
-
-            return Error content
-        else
-            return Ok ()
-    }
-
+    task {
+        let! result = Clients.Banking.getAccount accountId
+        return AccountDataUpdated result 
+    } |> Cmd.OfTask.result
+    
 
 let depositCashCmd data =
-    async {
-        let url = sprintf "%s/api/depositcash" baseUrl
-        let! result = sendData url data
+    task {
+        let! result = Clients.Banking.sendDepositCash data
         match result with
         | Error r ->
             return (OnError r)
         | Ok _ ->
             return CashDepositSend
-    } |> Cmd.OfAsync.result
+    } |> Cmd.OfTask.result
 
 
 let withdrawCashCmd data =
-    async {
-        let url = sprintf "%s/api/withdrawcash" baseUrl
-        let! result = sendData url data
+    task {
+        let! result = Clients.Banking.sendWithdrawCash data
         match result with
         | Error r ->
             return (OnError r)
         | Ok _ ->
             return CashWithdrawSend
-    } |> Cmd.OfAsync.result
+    } |> Cmd.OfTask.result
 
 
 let sepaTransferCmd data =
-    async {
-        let url = sprintf "%s/api/sepatransfer" baseUrl
-        let! result = sendData url data
+    task {
+        let! result = Clients.Banking.sendSepaTransfer data
         match result with
         | Error r ->
             return (OnError r)
         | Ok _ ->
             return SepaTransferSend
-    } |> Cmd.OfAsync.result
+    } |> Cmd.OfTask.result
+
+
+
+
+
     
 

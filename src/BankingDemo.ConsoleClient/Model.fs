@@ -1,6 +1,6 @@
 ﻿module Model
 
-open DataAccess.Dto
+open Dtos
 
 
 type Form =
