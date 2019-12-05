@@ -193,7 +193,7 @@ let connecting model dispatch =
 let depositCash (model:Model.Model) dispatch =
     formWindow "Deposit Cash" [
         label [ 
-            Text "Amount in Euro"
+            Text "How much do you want to deposit into you account?"
             Styles [
                 Pos (AbsPos 2,AbsPos 2)
             ]
@@ -221,7 +221,7 @@ let depositCash (model:Model.Model) dispatch =
 let withdrawCash (model:Model.Model) dispatch =
     formWindow "Withdraw Cash" [
         label [ 
-            Text "Account Id:"
+            Text "How much do you want to withdraw from your account?"
             Styles [
                 Pos (AbsPos 2,AbsPos 2)
             ]
@@ -249,7 +249,7 @@ let withdrawCash (model:Model.Model) dispatch =
 let sepaTransfer (model:Model.Model) dispatch =
     formWindow "Sepa Transfer" [
         label [ 
-            Text "Target Account"
+            Text "Enter the target account id for the sepa transfer."
             Styles [
                 Pos (AbsPos 2,AbsPos 2)
             ]
