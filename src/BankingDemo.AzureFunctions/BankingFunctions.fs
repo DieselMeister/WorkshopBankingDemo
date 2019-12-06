@@ -106,7 +106,7 @@ let sepaTransfer ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "se
         log.LogInformation("C# HTTP trigger function processed a request.")
 
         let! requestBody = (new StreamReader(req.Body)).ReadToEndAsync()
-        let sepaData = JsonConvert.DeserializeObject<Dtos.SepaTransaction>(requestBody);
+        let sepaData = JsonConvert.DeserializeObject<Dtos.SepaTransaction>(requestBody)
 
         let! dataRepo = dataRepo.Force()
         let! bankService = bankService.Force()

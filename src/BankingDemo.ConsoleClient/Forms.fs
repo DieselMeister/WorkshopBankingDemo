@@ -4,13 +4,39 @@ open Terminal.Gui.Elmish
 open Model
 open Dtos
 
+let logo : Terminal.Gui.View list =
+    [
+        let labelStyle y = 
+            Styles [ Pos (CenterPos,AbsPos y) ] 
+
+        label [ labelStyle 0; Text " ___     _     _  _   _  __         ___          _____   ___    ___    _  _     ___    __     __     __  " ]
+        label [ labelStyle 1; Text "| _ )   /_\   | \| | | |/ /  ___   / _ \   ___  |_   _| | _ \  / _ \  | \| |   |_  )  /  \   /  \   /  \ " ]
+        label [ labelStyle 2; Text "| _ \  / _ \  | .` | | ' <  |___| | (_) | |___|   | |   |   / | (_) | | .` |    / /  | () | | () | | () |" ]
+        label [ labelStyle 3; Text "|___/ /_/ \_\ |_|\_| |_|\_\        \___/          |_|   |_|_\  \___/  |_|\_|   /___|  \__/   \__/   \__/ " ]
+    ]
+
+
+let mainWindow content =
+    window [
+        Title "Bank-o-tron 2000"
+        Styles [
+            Pos (Position.AbsPos 0,Position.AbsPos 0)
+            Dim (Dimension.Fill, Dimension.Fill)
+        ]
+        
+    ] [
+        yield! logo
+
+        yield! content
+    ]
+
 
 let formWindow title content =
     window [
         Title title
         Styles [
             Pos (CenterPos,CenterPos)
-            Dim (FillMargin 3,FillMargin 3)
+            Dim (FillMargin 8,FillMargin 10)
         ]
     ] [
         yield! content

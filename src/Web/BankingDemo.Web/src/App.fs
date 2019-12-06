@@ -1,7 +1,24 @@
-﻿// Learn more about F# at http://fsharp.org
+module App.View
 
-open Terminal.Gui.Elmish
+open Elmish
+open Elmish.Browser.Navigation
+open Elmish.Browser.UrlParser
+open Fable.Core
+open Fable.Core.JsInterop
+open Fable.Import
+open Fable.Import.Browser
+open BankingDemo
+
+
+importAll "../sass/main.sass"
+
+open Fable.Helpers.React
+open Fable.Helpers.React.Props
+
 open Model
+
+
+
 
 
 
@@ -118,53 +135,43 @@ let update msg (model:Model) =
         { model with SepaTransactionForm = SepaTransaction.Empty }, Cmd.ofMsg GotoMainForm
 
     | OnError msg ->
-        messageBox 60 10 "Error" msg [ "OK" ] |> ignore
+        Fable.Import.Browser.window.alert msg        
         { model with IsLoading = false} ,Cmd.none
 
 
 
 
 let view model dispatch =
-    page [
+    div [ ]  [
         
         Forms.mainWindow [
             if model.IsLoading then
-                Forms.isLoading ()
+                yield Forms.isLoading ()
             else
                 match model.CurrentForm with
                 | LoginForm ->
-                    Forms.loginForm model dispatch
+                    yield  Forms.loginForm model dispatch
                 | ConnectionForm ->
-                    Forms.connecting model dispatch
+                    yield  Forms.connecting model dispatch
                 | MainForm ->
-                    Forms.mainSite model dispatch
+                    yield  Forms.mainSite model dispatch
                 | SepaTransactionForm ->
-                    Forms.sepaTransfer model dispatch
+                    yield  Forms.sepaTransfer model dispatch
                 | CashDepositForm ->
-                    Forms.depositCash model dispatch
+                    yield Forms.depositCash model dispatch
                 | CashWithdrawnForm ->
-                    Forms.withdrawCash model dispatch
+                    yield  Forms.withdrawCash model dispatch
         ]
     ]
 
+open Elmish.React
+open Elmish.Debug
+open Elmish.HMR
 
-
-
-
-
-
-open System.Globalization
-
-
-[<EntryPoint>]
-let main argv =
-
-    let cultureInfo = new CultureInfo("en-US");
-    cultureInfo.NumberFormat.CurrencySymbol <- "€";
-    
-    CultureInfo.DefaultThreadCurrentCulture <- cultureInfo;
-    CultureInfo.DefaultThreadCurrentUICulture <- cultureInfo;
-
-    Program.mkProgram init update view
-    |> Program.run
-    0 // return an integer exit code
+// App
+Program.mkProgram init update view
+#if DEBUG
+|> Program.withDebugger
+#endif
+|> Program.withReact "elmish-app"
+|> Program.run

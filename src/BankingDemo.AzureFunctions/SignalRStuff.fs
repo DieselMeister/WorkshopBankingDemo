@@ -5,7 +5,6 @@ open Newtonsoft.Json
 open FSharp.Control.Tasks.V2
 
 
-
 let hubName = "banking"
 
 let serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All)

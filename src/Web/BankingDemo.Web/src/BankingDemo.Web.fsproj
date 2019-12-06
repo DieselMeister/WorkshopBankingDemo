@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Global to the app -->
+    <!-- Info -->
+    <!-- Counter -->
+    <!-- Home -->
+    <!-- Navbar -->
+    <!-- App -->
+    <Compile Include="SignalRHelper.fs" />
+    <Compile Include="Dtos.fs" />
+    <Compile Include="Clients.fs" />
+    <Compile Include="Model.fs" />
+    <Compile Include="Commands.fs" />
+    <Compile Include="Forms.fs" />
+    <Compile Include="App.fs" />
+  </ItemGroup>
+  <Import Project="..\.paket\Paket.Restore.targets" />
+</Project>
