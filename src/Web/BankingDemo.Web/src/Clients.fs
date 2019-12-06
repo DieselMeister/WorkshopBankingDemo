@@ -63,14 +63,14 @@ module Banking =
     let getAccount accountId =
         promise {
             let url = sprintf "%s/api/getaccount/%s" baseUrl accountId
-            let! res = Fetch.fetch url []
-            if not res.Ok then
-                // Not Found
-                if res.Status = 404 then
+            let! res = Fetch.tryFetch url []
+            match res with
+            | Error e ->
+                if (e.Message.Contains("404")) then
                     return BankAccount.Empty accountId
                 else
                     return failwith ("error getting account data")
-            else
+            | Ok res ->
                 let! content = res.text()
                 let res = content |> Thoth.Json.Decode.fromString BankAccount.Decoder                 
                 match res with
