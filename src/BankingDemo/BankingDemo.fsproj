@@ -6,13 +6,12 @@
 
   <ItemGroup>
     <None Include="repl_stuff.fsx" />
+    <Compile Include="Common.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="Dtos.fs" />
     <Compile Include="DataAccess.fs" />
     <Compile Include="Services.fs" />
   </ItemGroup>
-
-  <ItemGroup />
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />

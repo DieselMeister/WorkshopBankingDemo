@@ -49,7 +49,7 @@ open Domain.DataTypes
 open Domain.TransactionArgs
 
 
-let private transactionFromDto (dto:ITransaction) =
+let transactionFromDto (dto:ITransaction) =
     match dto with
     | :? CashDeposit as d -> 
         {
@@ -70,7 +70,7 @@ let private transactionFromDto (dto:ITransaction) =
     | _ -> failwith "unknow transaction type"
 
 
-let private transactionFromDomain transaction =
+let transactionFromDomain transaction =
     match transaction with
     | Domain.CashDeposit d ->
         {

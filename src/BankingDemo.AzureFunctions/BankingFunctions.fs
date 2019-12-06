@@ -62,7 +62,7 @@ let depositCash ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "dep
         
 
 
-        let! account = bankService.DepositCash cashDepositData.AccountId cashDepositData.Amount
+        let! account = bankService.DepositCash cashDepositData
 
         do! sendAccountIds dataRepo
         do! sendAccountDataToClient dataRepo cashDepositData.AccountId
@@ -86,8 +86,7 @@ let withdrawCash ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "wi
         let! dataRepo = dataRepo.Force()
         let! bankService = bankService.Force()
 
-
-        let! account = bankService.WithdrawCash cashWithdrawData.AccountId cashWithdrawData.Amount
+        let! account = bankService.WithdrawCash cashWithdrawData
 
         do! sendAccountIds dataRepo
         do! sendAccountDataToClient dataRepo cashWithdrawData.AccountId
@@ -112,7 +111,7 @@ let sepaTransfer ([<HttpTrigger(AuthorizationLevel.Anonymous, "post",Route = "se
         let! bankService = bankService.Force()
 
 
-        let! account = bankService.SepaTransfer sepaData.SourceAccount sepaData.TargetAccount sepaData.Amount
+        let! account = bankService.SepaTransfer sepaData
 
         do! sendAccountIds dataRepo
         do! sendAccountDataToClient dataRepo sepaData.SourceAccount

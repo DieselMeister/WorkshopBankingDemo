@@ -57,7 +57,7 @@
 
 
     
-    let processTransaction bankaccount transaction =
+    let processTransaction transaction bankaccount =
         match transaction with
         | CashDeposit cd ->
             if cd.AccountId <> bankaccount.AccountId then

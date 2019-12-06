@@ -9,8 +9,8 @@ open Fable.PowerPack.Fetch.Fetch_types
 
 
 
-let baseUrl = "http://localhost:7071"
-
+//let baseUrl = "http://localhost:7071"
+let baseUrl = "https://bankingdemoazurefunctions.azurewebsites.net"
 
 
 
