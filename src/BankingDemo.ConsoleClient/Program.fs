@@ -61,6 +61,9 @@ let update msg (model:Model) =
     | AccountDataUpdated accountData ->
         { model with AccountData = Some accountData; IsLoading = false }, Cmd.none
 
+    | AccountDataUpdatedFromRemote accountData ->
+        { model with AccountData = Some accountData }, Cmd.none
+
     | LoginAccountIdUpdate accountId ->
         { model with AccountId = accountId }, Cmd.none
 
@@ -111,11 +114,13 @@ let update msg (model:Model) =
             { model with IsLoading = true}, Commands.sepaTransferCmd data
 
     | CashDepositSend ->
-        { model with CashDepositForm = CashTransaction.Empty }, Cmd.ofMsg GotoMainForm
+        { model with CashDepositForm = CashTransaction.Empty; IsLoading = false }, Cmd.ofMsg GotoMainForm
+
     | CashWithdrawSend ->
-        { model with CashWithdrawnFrom = CashTransaction.Empty }, Cmd.ofMsg GotoMainForm
+        { model with CashWithdrawnFrom = CashTransaction.Empty; IsLoading = false }, Cmd.ofMsg GotoMainForm
+
     | SepaTransferSend ->
-        { model with SepaTransactionForm = SepaTransaction.Empty }, Cmd.ofMsg GotoMainForm
+        { model with SepaTransactionForm = SepaTransaction.Empty; IsLoading = false }, Cmd.ofMsg GotoMainForm
 
     | OnError msg ->
         messageBox 60 10 "Error" msg [ "OK" ] |> ignore
@@ -166,5 +171,10 @@ let main argv =
     CultureInfo.DefaultThreadCurrentUICulture <- cultureInfo;
 
     Program.mkProgram init update view
+    |> Program.withTrace (fun msg model -> 
+        let text = sprintf "Msg: %A - Model: %A" msg model 
+
+        System.Diagnostics.Debug.WriteLine(text)
+    )
     |> Program.run
     0 // return an integer exit code

@@ -54,6 +54,7 @@ type Msg =
 
     | AllAccountsUpdates of accountIds:string list
     | AccountDataUpdated of accountData:BankAccount
+    | AccountDataUpdatedFromRemote of accountData:BankAccount
 
     | LoginAccountIdUpdate of accountId:string
 

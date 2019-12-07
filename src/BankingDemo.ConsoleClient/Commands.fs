@@ -11,7 +11,7 @@ open Dtos
 open Terminal.Gui.Elmish
 open System.Net
 open System.Text
-open FSharp.Control.Tasks.V2
+open FSharp.Control.Tasks.V2.ContextSensitive
 
 let private serializationOption = JsonSerializerSettings(TypeNameHandling=TypeNameHandling.All)
 
@@ -26,7 +26,7 @@ let openSignalRConnectionCmd accountId =
 
         let onGetAccountData (data:string) =
             let accountData = JsonConvert.DeserializeObject<BankAccount>(data,serializationOption)
-            dispatch (AccountDataUpdated accountData)
+            dispatch (AccountDataUpdatedFromRemote accountData)
         
         
         async {
@@ -48,7 +48,7 @@ let openSignalRConnectionCmd accountId =
 let getAccountCmd accountId =
     task {
         let! result = Clients.Banking.getAccount accountId
-        return AccountDataUpdated result 
+        return AccountDataUpdated result
     } |> Cmd.OfTask.result
     
 

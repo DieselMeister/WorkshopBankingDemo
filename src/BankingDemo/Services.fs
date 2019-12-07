@@ -8,7 +8,7 @@
     open DataAccess
     open FSharp.Control.Tasks.V2
     open System.Threading.Tasks
-    open Common
+    open Common.MoandicTaskHelper
     
 
     
@@ -24,6 +24,15 @@
                 |> Option.map (Dtos.bankAccountFromDto)
         }
 
+
+    let private getCurrentAccountV2 dataRepository accountId =
+        accountId
+        |> dataRepository.GetAccount
+        |> TaskOption.map (Dtos.bankAccountFromDto)
+
+
+
+
     let private getCurrentAccountOrDefault dataRepository accountId =
         task {
             let! currentAccount =
@@ -36,6 +45,22 @@
                     Transactions = []
                 }
         }
+
+
+    let private getCurrentAccountOrDefaultV2 dataRepository accountId =
+        accountId
+        |> getCurrentAccountV2 dataRepository
+        |> Task.map (
+            fun account ->
+                account
+                |> Option.defaultValue {
+                    AccountId = AccountId.create accountId
+                    Amount = Money.create 0.0m
+                    Transactions = []
+                }
+            
+        )
+        
 
 
     let depositCash (dataRepository:DataRepository) (command:Dtos.CashDeposit) =
@@ -63,9 +88,9 @@
     let depositCashV2 (dataRepository:DataRepository) (command:Dtos.CashDeposit) =
         command.AccountId
         |> getCurrentAccountOrDefault dataRepository
-        |> taskMap (fun account -> Dtos.transactionFromDto command, account) 
-        |> taskMap (fun (cashDeposit,account) -> processTransaction cashDeposit account)
-        |> resultTaskBind (fun newAccount -> dataRepository.StoreAccount newAccount)
+        |> Task.map (fun account -> Dtos.transactionFromDto command, account) 
+        |> Task.map (fun (cashDeposit,account) -> processTransaction cashDeposit account)
+        |> TaskResult.bind (fun newAccount -> dataRepository.StoreAccount newAccount)
 
 
     /// more understandable monadic version of depositCash
@@ -73,15 +98,15 @@
 
         let mapCommandToTransaction account =
             account 
-            |> taskMap (fun account -> Dtos.transactionFromDto command, account)
+            |> Task.map (fun account -> Dtos.transactionFromDto command, account)
 
         let processTransaction input =
             input 
-            |> taskMap (fun (cashDeposit,account) -> Domain.processTransaction cashDeposit account)
+            |> Task.map (fun (cashDeposit,account) -> Domain.processTransaction cashDeposit account)
 
         let storeTransaction newTransaction =
             newTransaction
-            |> resultTaskBind (fun newAccount -> dataRepository.StoreAccount newAccount)
+            |> TaskResult.bind (fun newAccount -> dataRepository.StoreAccount newAccount)
 
         command.AccountId
         |> getCurrentAccountOrDefault dataRepository
@@ -118,10 +143,10 @@
     let withdrawCashV2 (dataRepository:DataRepository) (command:Dtos.CashWithdrawn) =
         command.AccountId
         |> getCurrentAccount dataRepository
-        |> taskMap (Option.map (fun account -> Dtos.transactionFromDto command, account))
-        |> taskMap (Option.map (fun (cashWithdraw,account) -> processTransaction cashWithdraw account))
-        |> taskMap (Option.defaultValue (Error "insufficent funds"))
-        |> resultTaskBind (fun newAccount -> dataRepository.StoreAccount newAccount)
+        |> TaskOption.map (fun account -> Dtos.transactionFromDto command, account)
+        |> TaskOption.map (fun (cashWithdraw,account) -> processTransaction cashWithdraw account)
+        |> Task.map (Option.defaultValue (Error "insufficent funds"))
+        |> TaskResult.bind (fun newAccount -> dataRepository.StoreAccount newAccount)
         
 
     /// more understandable monadic version of depositCash
@@ -129,19 +154,19 @@
 
         let mapCommandToTransaction account =
             account 
-            |> taskMap (Option.map (fun account -> Dtos.transactionFromDto command, account))
+            |> TaskOption.map (fun account -> Dtos.transactionFromDto command, account)
 
         let processTransaction input =
             input 
-            |> taskMap (Option.map (fun (cashWithdraw,account) -> Domain.processTransaction cashWithdraw account))
+            |> TaskOption.map (fun (cashWithdraw,account) -> Domain.processTransaction cashWithdraw account)
 
         let storeTransaction newTransaction =
             newTransaction
-            |> resultTaskBind (fun newAccount -> dataRepository.StoreAccount newAccount)
+            |> TaskResult.bind (fun newAccount -> dataRepository.StoreAccount newAccount)
 
         let leaveWithInsufficentFundsIfNoAccountExists result =
             result 
-            |> taskMap (Option.defaultValue (Error "insufficent funds"))
+            |> Task.map (Option.defaultValue (Error "insufficent funds"))
 
 
         command.AccountId
@@ -191,18 +216,18 @@
         let newSourceAccount =
             command.SourceAccount
             |> getCurrentAccount dataRepository
-            |> taskMap (Option.map (fun sourceAccount -> Dtos.transactionFromDto command, sourceAccount))
-            |> taskMap (Option.map (fun (sepaTransaction,sourceAccount) -> processTransaction sepaTransaction sourceAccount))
-            |> taskMap (Option.defaultValue (Error "insufficent funds"))
+            |> TaskOption.map (fun sourceAccount -> Dtos.transactionFromDto command, sourceAccount)
+            |> TaskOption.map (fun (sepaTransaction,sourceAccount) -> processTransaction sepaTransaction sourceAccount)
+            |> Task.map (Option.defaultValue (Error "insufficent funds"))
 
         let newTargetAccount =
             command.TargetAccount
             |> getCurrentAccountOrDefault dataRepository
-            |> taskMap (fun targetAccount -> Dtos.transactionFromDto command, targetAccount) 
-            |> taskMap (fun (sepaTransaction,targetAccount) -> processTransaction sepaTransaction targetAccount)
+            |> Task.map (fun targetAccount -> Dtos.transactionFromDto command, targetAccount) 
+            |> Task.map (fun (sepaTransaction,targetAccount) -> processTransaction sepaTransaction targetAccount)
 
         (newSourceAccount,newTargetAccount)
-        |> resultTaskMap2 (fun (newSourceAccount,newTargetAccount) ->
+        |> TaskResult.map2 (fun (newSourceAccount,newTargetAccount) ->
             Task.WhenAll [
                 newSourceAccount |> dataRepository.StoreAccount
                 newTargetAccount |> dataRepository.StoreAccount
@@ -215,31 +240,31 @@
 
         let mapCommandToTransaction account =
             account 
-            |> taskMap (fun account -> Dtos.transactionFromDto command, account)
+            |> Task.map (fun account -> Dtos.transactionFromDto command, account)
 
         let mapCommandToTransactionOption account =
             account 
-            |> taskMap (Option.map (fun account -> Dtos.transactionFromDto command, account))
+            |> TaskOption.map (fun account -> Dtos.transactionFromDto command, account)
 
         
         let processTransaction input =
             input 
-            |> taskMap (fun (cashWithdraw,account) -> Domain.processTransaction cashWithdraw account)
+            |> Task.map (fun (cashWithdraw,account) -> Domain.processTransaction cashWithdraw account)
 
 
         let processTransactionOption input =
             input 
-            |> taskMap (Option.map (fun (sepaTransaction,sourceAccount) -> Domain.processTransaction sepaTransaction sourceAccount))
+            |> TaskOption.map (fun (sepaTransaction,sourceAccount) -> Domain.processTransaction sepaTransaction sourceAccount)
 
 
         let leaveWithInsufficentFundsIfNoAccountExists result =
             result 
-            |> taskMap (Option.defaultValue (Error "insufficent funds"))
+            |> Task.map (Option.defaultValue (Error "insufficent funds"))
 
 
         let storeAccounts (a1,a2) =
             (a1,a2)
-            |> resultTaskMap2 (
+            |> TaskResult.map2 (
                 fun (newSourceAccount,newTargetAccount) ->
                     Task.WhenAll [
                         newSourceAccount |> dataRepository.StoreAccount
@@ -271,22 +296,22 @@
 
         let mapCommandToTransaction f account =
             account 
-            |> taskMap (f (fun account -> Dtos.transactionFromDto command, account))
+            |> Task.map (f (fun account -> Dtos.transactionFromDto command, account))
 
         
         let processTransaction f input =
             input 
-            |> taskMap (f (fun (cashWithdraw,account) -> Domain.processTransaction cashWithdraw account))
+            |> Task.map (f (fun (cashWithdraw,account) -> Domain.processTransaction cashWithdraw account))
 
 
         let leaveWithInsufficentFundsIfNoAccountExists result =
             result 
-            |> taskMap (Option.defaultValue (Error "insufficent funds"))
+            |> Task.map (Option.defaultValue (Error "insufficent funds"))
 
 
         let store2Accounts (a1,a2) =
             (a1,a2)
-            |> resultTaskMap2 (
+            |> TaskResult.map2 (
                 fun (newSourceAccount,newTargetAccount) ->
                     Task.WhenAll [
                         newSourceAccount |> dataRepository.StoreAccount
